@@ -1,0 +1,29 @@
+/*
+  Localizable.strings
+ //  RickAndMorty
+ //
+ //  Created by Ahmad on 30/09/2024.
+ //
+
+  
+*/
+"loginTitle" = "Login";
+"error" = "Error";
+"ok" = "OK";
+"characters" = "Characters";
+
+//to categories screens we can use (.) to create localization enum for each screen.
+"config.user.change_password" = "Change Password";
+"canceledSuccessfullyTitleLabel" = "canceled_successfully_title_label";
+
+"offline" = "The Internet connection appears to be offline.";
+"server" = "There was a problem reaching the server. Please try again later.";
+"timedOut" = "Request timed out. Please try again later.";
+"internalServerError" = "There was a problem reaching the servers. Please contact the system admin.";
+"failedToCommunicateWithServer" = "There was an error communicating with the servers.";
+"badResponse" = "Unexpected error (bad response). Please contact the system admin.";
+"notFound" = "Unexpected error (404). Please contact the system admin.";
+"forbidden" = "Unexpected error (403). Please contact the system admin.";
+"canceledSuccessfullyTitleLabel" = "Canceled successfully.";
+
+

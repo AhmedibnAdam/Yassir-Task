@@ -1,0 +1,32 @@
+//
+//  ConfigDevelopment.xcconfig
+//  RickAndMorty
+//
+//  Created by Ahmad on 30/09/2024.
+//
+
+// Configuration settings file format documentation can be found at:
+// https://help.apple.com/xcode/#/dev745c5c974
+
+// Server URL
+SERVER_URL = https:/$()/rickandmortyapi.com/api
+ROOT_URL = https:/$()/rickandmortyapi.com/api
+
+
+// Keys
+API_KEY =
+
+FIREBASE_PLIST =
+GMSService =
+
+// App Settings
+ENVIRONMENT = RickAndMorty
+APP_NAME = RickAndMorty
+APP_BUNDLE_ID = Adam.TechnicalTask.RickAndMorty
+
+// Support
+LOADER_ANIMATION_NAME = loader
+
+// MSAL
+
+//ENTERTAINER SDK
