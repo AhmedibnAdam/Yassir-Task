@@ -175,3 +175,4 @@ The app consumes the [Rick and Morty API](https://rickandmortyapi.com/) to fetch
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
