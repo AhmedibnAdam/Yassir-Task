@@ -11,14 +11,11 @@ import RxSwift
 // MARK: - CharactersListViewModel
 class CharactersListViewModel: ViewModelType {
     
-    // MARK: Input & Output
     struct Input {
         let pageSize: BehaviorSubject<Int>
         var pageOffset: Int = 0
         var selectedItem: PublishSubject<CharacterModel> = PublishSubject()
         var filterStatus: BehaviorSubject<CharacterStatus?> = BehaviorSubject(value: nil)
-
-        
     }
 
     struct Output {
@@ -30,19 +27,20 @@ class CharactersListViewModel: ViewModelType {
         var charactersList: BehaviorSubject<[CharacterModel?]>
         var filteredCharactersList: BehaviorSubject<[CharacterModel?]>
         var resetList: PublishSubject<Void>
-
     }
 
-    let input: Input
+    var input: Input
     private(set) var output: Output
     let bag = DisposeBag()
-    private let getCharactersListUseCase: GetCharactersListUseCase
+    
+    private let getCharactersListUseCase: GetCharactersListUseCaseProtocol
+    private let characterFilter: CharacterFiltering
+    
     private (set) var charactersList: [CharacterModel] = []
 
     // MARK: - Initialization
     init() {
         self.input = Input(pageSize: BehaviorSubject(value: 20))
-        
         self.output = Output(
             isLoading: BehaviorSubject(value: false),
             errorEntity: PublishSubject<StateDialogueEntity>(),
@@ -52,14 +50,24 @@ class CharactersListViewModel: ViewModelType {
             charactersList: BehaviorSubject<[CharacterModel?]>(value: []),
             filteredCharactersList: BehaviorSubject<[CharacterModel?]>(value: []),
             resetList: PublishSubject<Void>()
-
         )
-        self.getCharactersListUseCase = GetCharactersListUseCase()
-        filterCharacters()
+        
+        self.getCharactersListUseCase = GetCharactersListUseCase(repo:  CharactersRepo())
+        self.characterFilter = CharacterFilter()
+        
+        setupBindings()
     }
 }
 
 extension CharactersListViewModel {
+    
+    func requestInitialCharacters() {
+        // Reset any necessary state or data
+        charactersList.removeAll()
+        input.pageOffset = 0 // Reset offset if needed
+        output.hasMoreToLoad.onNext(true) // Assuming there are more to load initially
+        getCharacters(with: Observable.just(()), page: 1) // Fetch the first page of characters
+    }
     
     func getCharacters(with submit: Observable<Void>, page: Int){
         self.output.isLoading.onNext(true)
@@ -68,7 +76,7 @@ extension CharactersListViewModel {
             .withLatestFrom(input.pageSize)
             .flatMap { [weak self] pageSize -> VMResult<CharactersEntity> in
             guard let self = self else { return .empty() }
-                return self.getCharactersListUseCase.start(CharactersListRequestEntity(page: page, pageSize: pageSize))!
+                return self.getCharactersListUseCase.execute(CharactersListRequestEntity(page: page, pageSize: pageSize))!
         }.subscribe(
             onNext: { [weak self] result in
                 guard let self else { return }
@@ -100,41 +108,39 @@ extension CharactersListViewModel {
         self.output.hasMoreToLoad.onNext(hasMoreToLoad)
         
         charactersList.append(contentsOf: characters)
-        setCharacterStatus()
+        refreshCharacterStatus()
     }
     
     private func handleError(_ error: Error) {
-           output.errorEntity.onNext(StateDialogueEntity(
-               title: Localize.error,
-               description: (error as? APIError)?.localizedDescription ?? error.localizedDescription,
-               buttonTitle: Localize.ok,
-               type: .error
-           ))
-       }
+        output.errorEntity.onNext(StateDialogueEntity(
+            title: Localize.error,
+            description: (error as? APIError)?.localizedDescription ?? error.localizedDescription,
+            buttonTitle: Localize.ok,
+            type: .error
+        ))
+    }
     
 }
 
 extension CharactersListViewModel {
-    func filterCharacters(){
-        input.filterStatus
-            .subscribe(onNext: { [weak self] status in
-                guard let status = status else {
-                    self?.resetFilter()
-                    return
-                }
-                if let characters = self?.charactersList.filter({$0.status == status}) {
-                    self?.output.filteredCharactersList.onNext(characters)
-                }
-            })
-            .disposed(by: bag)
-  
-    }
     
-    fileprivate func setCharacterStatus() {
+    private func refreshCharacterStatus() {
         let lastValue = try? input.filterStatus.value()
         input.filterStatus.onNext(lastValue)
     }
     
+    private func setupBindings() {
+        input.filterStatus
+            .subscribe(onNext: { [weak self] status in
+                self?.applyFilter(status: status)
+            })
+            .disposed(by: bag)
+    }
+    
+    private func applyFilter(status: CharacterStatus? = nil) {
+        let filteredList = characterFilter.filterCharacters(charactersList, by: status)
+        output.filteredCharactersList.onNext(filteredList)
+    }
     
     func resetFilter() {
         charactersList = Array(Set(charactersList))

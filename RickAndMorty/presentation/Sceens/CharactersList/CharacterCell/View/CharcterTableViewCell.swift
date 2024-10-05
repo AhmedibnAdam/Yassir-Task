@@ -10,7 +10,7 @@ import RxSwift
 
 class CharcterTableViewCell: UITableViewCell {
     
-    private var indexPath: IndexPath? // Store indexPath
+    private var indexPath: IndexPath? 
     var viewModel: CharacterTableViewCellViewModel!
     let disposeBag = DisposeBag()
     

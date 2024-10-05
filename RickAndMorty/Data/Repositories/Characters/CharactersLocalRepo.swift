@@ -15,8 +15,8 @@ struct CharactersLocalData: EventDataProtocol {
     var json: String
 }
 
-class CharactersLocalRepo: LocalRepository {
-
+class CharactersLocalRepo: LocalRepository, LocalRepositoryType {
+  
     // MARK: Properties
     let databaseManager: DBManaging
 

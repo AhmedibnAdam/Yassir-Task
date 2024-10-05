@@ -19,82 +19,34 @@ class CharctersListViewController: BaseViewController {
     @IBOutlet weak var aliveButton: UIButton!
     @IBOutlet weak var deadButton: UIButton!
     @IBOutlet weak var unKnownButton: UIButton!
-
+    
     // MARK: - Properties
     var viewModel = CharactersListViewModel()
     let refreshControl = UIRefreshControl()
     let disposeBag = DisposeBag()
-    var pageOffset: Int = 20
-    var pageNumber: Int = 1
-    var hasMore: Bool = true
-    var inRequest: Bool = false
- 
+    
+    private var paginationManager: PaginationManager!
+    
     // MARK: - Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
-        request() 
-        setupUI()
-    }
-}
-// MARK: - CharctersListViewController UI Setup
-extension CharctersListViewController {
-
-    func setupUI() {
-        setupLabel()
-        setupButtonsUI()
-        setupRequestsTableView()
-        setupPullToRefresh()
-        bindObservables()
+        configureUI()
+        setupPagination()
+        viewModel.requestInitialCharacters()
+        handleBinding()
     }
     
-    func setupLabel() {
-        titleLabel.font = UIFont.boldSystemFont(ofSize: 32)
-        titleLabel.textColor = Assets.Colors.primary.color
-        titleLabel.textAlignment = .center
-        titleLabel.text = Localize.characters
-        titleLabel.shadowColor = Assets.Colors.secondary.color
-        titleLabel.shadowOffset = CGSize(width: 1, height: 1)
-        
-    }
-    
-    func setupButtonsUI() {
-        configureButton(aliveButton)
-        configureButton(deadButton)
-        configureButton(unKnownButton)
-    }
-
-    private func configureButton(_ button: UIButton) {
-        button.layer.cornerRadius = button.frame.height / 2
-        button.backgroundColor = Assets.Colors.background.color
-        button.layer.borderWidth = 1
-        button.layer.borderColor = Assets.Colors.border.color.cgColor
-        button.tintColor = Assets.Colors.primary.color
-    }
-
-    /// Set up the table view properties and register the necessary cell types.
-    private func setupRequestsTableView() {
-        registerCell(id: CharcterTableViewCell.getName(), tableView: tableView)
-        tableView.separatorStyle = .none
-        tableView.tableFooterView = UIView()
-        tableView.contentInset = UIEdgeInsets(top: 0, left: 0, bottom: 100, right: 0)
-        tableView.showsVerticalScrollIndicator = false
-    }
-
-    /// Bind the view model to the table view and handle empty states and selection events.
-    private func bindObservables() {
+    private func handleBinding() {
         bindCharactersList()
         bindLoadingState()
-        bindModelSelection()
-        paginationBinding()
         bindButtonActions()
-
+        bindModelSelection()
     }
-
-    /// Binds the characters list to the table view.
+    
     private func bindCharactersList() {
         viewModel.output.filteredCharactersList
             .bind(to: tableView.rx.items) { [weak self] (tableView, row, item) -> UITableViewCell in
-                guard let self = self, let item = item else { return UITableViewCell() }
+                guard let self, let item = item else { return UITableViewCell() }
                 let viewModel = CharacterTableViewCellViewModel(model: item)
                 return CharcterTableViewCell.populateCell(tableView: tableView, indexPath: IndexPath(row: row, section: 0), viewModel: viewModel)
             }
@@ -108,22 +60,63 @@ extension CharctersListViewController {
             .disposed(by: disposeBag)
         
         viewModel.output.errorEntity
-        .asDriver(onErrorJustReturn: StateDialogueEntity())
-        .drive(rx.message)
-        .disposed(by: disposeBag)
+            .asDriver(onErrorJustReturn: StateDialogueEntity())
+            .drive(rx.message)
+            .disposed(by: disposeBag)
     }
-
-    /// Binds the loading state and updates the empty view accordingly.
+    
     private func bindLoadingState() {
         viewModel.output.isLoading
             .asDriver(onErrorJustReturn: false)
             .drive(self.rx.isAnimating)
             .disposed(by: disposeBag)
     }
+}
 
-    /// Handles the empty view when the list is empty and not loading.
+// MARK: - UI Setup
+extension CharctersListViewController {
+    func configureUI() {
+        configureLabel()
+        configureButtons()
+        configureTableView()
+        setupPullToRefresh()
+    }
+    
+    private func configureLabel() {
+        titleLabel.applyStyle(font: UIFont.boldSystemFont(ofSize: 32), color: Assets.Colors.primary.color)
+        titleLabel.text = Localize.characters
+    }
+    
+    private func configureButtons() {
+        [aliveButton, deadButton, unKnownButton].forEach { button in
+            button?.applyRoundedStyle(borderColor: Assets.Colors.border.color.cgColor)
+        }
+    }
+}
+
+    // MARK: - Table Binding
+extension CharctersListViewController {
+    private func configureTableView() {
+        registerCell(id: CharcterTableViewCell.getName(), tableView: tableView)
+        tableView.separatorStyle = .none
+        tableView.tableFooterView = UIView()
+        tableView.contentInset = UIEdgeInsets(top: 0, left: 0, bottom: 100, right: 0)
+        tableView.showsVerticalScrollIndicator = false
+    }
+    
+    private func setupPullToRefresh() {
+        tableView.refreshControl = refreshControl
+        refreshControl.rx.controlEvent(.valueChanged)
+            .subscribe(onNext: { [weak self] in
+                self?.viewModel.requestInitialCharacters()
+                self?.refreshControl.endRefreshing()
+                
+            })
+            .disposed(by: disposeBag)
+    }
+    
     private func handleEmptyView(for count: Int, isLoading: Bool) {
-        if !isLoading {
+        if !isLoading, count < 1 {
             let emptyView = EmptyListView(
                 title: Localize.notFound,
                 image: Assets.Assets.tempImage.image,
@@ -132,8 +125,7 @@ extension CharctersListViewController {
             tableView.rx.emptyView.onNext(emptyView)
         }
     }
-
-    /// Binds the table view selection to perform actions when an item is selected.
+    
     private func bindModelSelection() {
         tableView.rx.modelSelected(CharacterModel.self)
             .subscribe(onNext: { [weak self] model in
@@ -141,8 +133,7 @@ extension CharctersListViewController {
             })
             .disposed(by: disposeBag)
     }
-
-    /// Navigates to the character details view.
+    
     private func navigateToCharacterDetails(with model: CharacterModel) {
         presentCharacterView(character: model)
     }
@@ -155,26 +146,24 @@ extension CharctersListViewController {
         let hostingController = UIHostingController(rootView: characterView)
         hostingController.modalPresentationStyle = .fullScreen
         present(hostingController, animated: true, completion: nil)
-        
     }
-    
-    private func getButtonActive(sender: UIButton) {
-        sender.layer.borderWidth = 5
-        sender.layer.borderColor = Assets.Colors.secondary.color.cgColor
+}
+
+// MARK: - ViewModel Binding
+extension CharctersListViewController {
+    private func handlePaginationState(hasMore: Bool) {
+        hasMore ? tableView.addBottomActivityIndicator() : tableView.removeBottomActivityIndicator()
     }
-    
-    private func getButtonDisActive(sender: UIButton) {
-        sender.layer.borderWidth = 1
-        sender.layer.borderColor = Assets.Colors.border.color.cgColor
-    }
-    
-    func bindButtonActions() {
+}
+
+// MARK: -  Button Action Bindings
+extension CharctersListViewController {
+    private func bindButtonActions() {
         let buttons: [(UIButton, CharacterStatus?)] = [
             (aliveButton, .alive),
             (deadButton, .dead),
             (unKnownButton, .unknown)
         ]
-
         buttons.forEach { button, filterStatus in
             button.rx.tap
                 .subscribe(onNext: { [weak self] in
@@ -189,9 +178,8 @@ extension CharctersListViewController {
     private func toggleButtonSelection(selectedButton: UIButton) {
         let buttons = [aliveButton, deadButton, unKnownButton]
         buttons.forEach { button in
-            guard let button else { return }
-            button.isSelected = (button == selectedButton) ? !button.isSelected : false
-            button.isSelected ? getButtonActive(sender: button) : getButtonDisActive(sender: button)
+            button?.isSelected = button == selectedButton ? !button!.isSelected : false
+            button?.isSelected == true ? button?.setSelectedStyle() : button?.setDeselectedStyle()
         }
     }
 
@@ -199,107 +187,42 @@ extension CharctersListViewController {
         if button.isSelected {
             viewModel.input.filterStatus.onNext(status)
         } else {
-            viewModel.input.filterStatus.onNext(nil)
+            viewModel.input.filterStatus.onNext(nil as CharacterStatus?)
+
         }
     }
-
 }
 
-// MARK: - Pagination
-extension CharctersListViewController: Pagination {
+// MARK: - Pagination Setup
+extension CharctersListViewController: PaginationManagerDelegate {
+    func setupPagination() {
+        paginationManager = PaginationManager()
 
-    // MARK: - Pull to Refresh Setup
-    func setupPullToRefresh() {
-        setupRefreshControl()
-        bindRefreshControlState()
-        handlePullToRefreshEvent()
-    }
-
-    /// Sets up the refresh control for the table view.
-    private func setupRefreshControl() {
-        tableView.refreshControl = refreshControl
-    }
-
-    /// Binds the refresh control's state to the view model's refresh state.
-    private func bindRefreshControlState() {
-        viewModel.output.refreshControl
-            .skip(1)
-            .skip(while: { $0 })
-            .asDriver(onErrorJustReturn: false)
-            .drive(refreshControl.rx.isRefreshing)
-            .disposed(by: disposeBag)
-    }
-
-    /// Handles the pull-to-refresh control event.
-    private func handlePullToRefreshEvent() {
-        refreshControl.rx.controlEvent(.valueChanged)
-            .asDriver()
-            .map { self.refreshControl.isRefreshing }
-            .filter { $0 }
-            .drive(onNext: { [weak self] _ in
-                self?.handleRefresh()
-            })
-            .disposed(by: disposeBag)
-    }
-
-    /// Triggered when the pull-to-refresh is active.
-    private func handleRefresh() {
-        viewModel.output.resetList.onNext(())
-        tableView.hideEmptyView()
-    }
-
-    // MARK: - Pagination Setup
-    func paginationBinding() {
-        handleResetList()
-        bindPaginationToTableView()
-        observeHasMoreToLoad()
-    }
-
-    /// Resets pagination and triggers a new request when the list is reset.
-    private func handleResetList() {
-        viewModel.output.resetList
-            .subscribe(onNext: { [weak self] in
-                self?.resetPagination()
-                self?.request()
-                self?.refreshControl.endRefreshing()
-            })
-            .disposed(by: disposeBag)
-    }
-
-    /// Observes the `willDisplayCell` event and checks if more pages should be loaded.
-    private func bindPaginationToTableView() {
+        paginationManager.delegate = self
+        paginationManager.onLoadNextPage = { [weak self] in
+            self?.requestNextPage()
+        }
+        
         Observable.combineLatest(
-            tableView.rx.willDisplayCell.map { $0.indexPath },
-            viewModel.output.filteredCharactersList
-        )
-        .subscribe(onNext: { [weak self] indexPath, models in
-            self?.nextPage(from: indexPath.row, count: models.count)
-        })
-        .disposed(by: disposeBag)
+                  tableView.rx.willDisplayCell.map { $0.indexPath },
+                  viewModel.output.filteredCharactersList
+              )
+              .subscribe(onNext: { [weak self] indexPath, models in
+                  self?.paginationManager.handleContentOffset(from: indexPath.row, count: models.count)
+              })
+              .disposed(by: disposeBag)
+     
     }
-
-    /// Observes whether more content needs to be loaded and shows/hides the activity indicator.
-    private func observeHasMoreToLoad() {
-        viewModel.output.hasMoreToLoad
-            .subscribe(onNext: { [weak self] hasMoreToLoad in
-                self?.hasMore = hasMoreToLoad
-                if hasMoreToLoad {
-                    self?.tableView.addBottomActivityIndicator()
-                } else {
-                    self?.tableView.removeBottomActivityIndicator()
-                }
-            })
-            .disposed(by: disposeBag)
+    
+    func requestNextPage() {
+        viewModel.getCharacters(with: Observable.just(()), page: paginationManager.currentPage)
     }
-
-    /// Adds a bottom activity indicator when fetching the next page.
-    func willCallNextPage() {
-        tableView.addBottomActivityIndicator()
+    
+    func updateLoadingState(isLoading: Bool) {
+        paginationManager.updateLoadingState(isLoading: isLoading)
     }
-
-    /// Requests the next page of characters.
-    func request() {
-        viewModel.getCharacters(with: Observable.just(()), page: pageNumber)
-        pageOffset = (pageNumber * pageNumber) - 1
+    
+    func updateHasMorePages(hasMore: Bool) {
+        paginationManager.updateHasMorePages(hasMore: hasMore)
     }
 }

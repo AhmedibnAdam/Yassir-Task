@@ -14,26 +14,23 @@ struct CharactersListRequestEntity: BaseModel {
     var page: Int
     var pageSize: Int
 }
-struct GetCharactersListUseCase: UseCaseType {
-    var repo: RepositoryType = CharactersRepo()
-    var loading: BehaviorSubject<Bool> = BehaviorSubject(value: false)
-    var disposeBag: DisposeBag = DisposeBag()
-    var errorEntity: PublishSubject<StateDialogueEntity> = PublishSubject()
 
-    func start<T>(_ params: BaseModel?) -> VMResult<T>? where T: Decodable, T: Encodable {
+protocol GetCharactersListUseCaseProtocol {
+    func execute<T>(_ params: BaseModel?) -> VMResult<T>? where T: Decodable, T: Encodable
+}
+
+class GetCharactersListUseCase: GetCharactersListUseCaseProtocol {
+    private let repo: CharactersRepoType
+    private let disposeBag = DisposeBag()
+
+    // Injecting the repository via constructor for better flexibility and testing
+    init(repo: CharactersRepoType) {
+        self.repo = repo
+    }
+
+    func execute<T>(_ params: BaseModel?) -> VMResult<T>? where T: Decodable, T: Encodable {
         guard let parameters = params as? CharactersListRequestEntity else { return nil }
         let repo = (repo as! CharactersRepo)
-
-        repo.loading
-            .asDriver(onErrorJustReturn: true)
-            .drive(loading)
-            .disposed(by: disposeBag)
-
-        repo.errorEntity
-            .asDriver(onErrorJustReturn: StateDialogueEntity())
-            .drive(errorEntity)
-            .disposed(by: disposeBag)
-
         return repo.getCharactersList(page: parameters.page, PageSize: parameters.pageSize)
     }
 }
