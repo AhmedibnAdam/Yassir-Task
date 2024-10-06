@@ -19,7 +19,7 @@ target 'RickAndMorty' do
   pod 'netfox'
   pod 'GRDB.swift'
   pod 'lottie-ios'
-  
+  pod 'RxTest'
   
   target 'RickAndMortyTests' do
     inherit! :search_paths

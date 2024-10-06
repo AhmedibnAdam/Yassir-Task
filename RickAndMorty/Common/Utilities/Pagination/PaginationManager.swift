@@ -6,7 +6,6 @@
 //
 
 import RxSwift
-import RxCocoa
 
 protocol PaginationManagerDelegate: AnyObject {
     func requestNextPage()
@@ -14,25 +13,16 @@ protocol PaginationManagerDelegate: AnyObject {
 
 class PaginationManager {
     
-    private let disposeBag = DisposeBag()
     weak var delegate: PaginationManagerDelegate?
     
-    private var isLoading: Bool = false
-    private var hasMorePages: Bool = true
+    var isLoading: Bool = false
+    var hasMorePages: Bool = true
     var currentPage: Int = 1
-    private let threshold: CGFloat = 100 // Offset threshold for triggering the next page load
+    let threshold: CGFloat = 100
+    
+    var onContentOffset: ((CGPoint) -> Void)?
 
-    var onContentOffset: ((CGPoint) -> Void)? {
-        didSet {
-            // Set up initial state if needed
-        }
-    }
-
-    var onLoadNextPage: (() -> Void)? {
-        didSet {
-            // Set up initial state if needed
-        }
-    }
+    var onLoadNextPage: (() -> Void)?
 
     func resetPagination() {
         currentPage = 1
@@ -54,14 +44,14 @@ class PaginationManager {
         loadNextPage()
     }
     
-    private func shouldLoadNextPage(contentOffset: CGPoint) -> Bool {
+    func shouldLoadNextPage(contentOffset: CGPoint) -> Bool {
         let contentHeight = UIScreen.main.bounds.height // Mocking content height, replace with actual content height
         let offsetThreshold = contentHeight - threshold // Offset threshold for triggering the next page load
 
         return contentOffset.y >= offsetThreshold && hasMorePages && !isLoading
     }
     
-    private func loadNextPage() {
+    func loadNextPage() {
         currentPage += 1
         onLoadNextPage?()
     }

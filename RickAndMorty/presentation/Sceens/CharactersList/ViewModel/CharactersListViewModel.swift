@@ -36,7 +36,7 @@ class CharactersListViewModel: ViewModelType {
     private let getCharactersListUseCase: GetCharactersListUseCaseProtocol
     private let characterFilter: CharacterFiltering
     
-    private (set) var charactersList: [CharacterModel] = []
+    var charactersList: [CharacterModel] = []
 
     // MARK: - Initialization
     init() {
@@ -97,7 +97,7 @@ extension CharactersListViewModel {
         ).disposed(by: bag)
     }
     
-    private func handleResponse(_ characters: [CharacterModel], _ info: CharactersEntityInfo) {
+    func handleResponse(_ characters: [CharacterModel], _ info: CharactersEntityInfo) {
         var hasMoreToLoad = !characters.isEmpty
         if hasMoreToLoad && characters.count < self.input.pageOffset {
             hasMoreToLoad = false
@@ -111,7 +111,7 @@ extension CharactersListViewModel {
         refreshCharacterStatus()
     }
     
-    private func handleError(_ error: Error) {
+    func handleError(_ error: Error) {
         output.errorEntity.onNext(StateDialogueEntity(
             title: Localize.error,
             description: (error as? APIError)?.localizedDescription ?? error.localizedDescription,
