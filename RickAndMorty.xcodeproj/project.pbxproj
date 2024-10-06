@@ -888,6 +888,7 @@
 				4734D82A2CA84BE000DEC555 /* Sources */,
 				4734D82B2CA84BE000DEC555 /* Frameworks */,
 				4734D82C2CA84BE000DEC555 /* Resources */,
+				A1F67E02087B5998C1BA846B /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
@@ -1039,6 +1040,23 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-RickAndMorty-RickAndMortyUITests/Pods-RickAndMorty-RickAndMortyUITests-frameworks.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+		A1F67E02087B5998C1BA846B /* [CP] Embed Pods Frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-RickAndMortyTests/Pods-RickAndMortyTests-frameworks-${CONFIGURATION}-input-files.xcfilelist",
+			);
+			name = "[CP] Embed Pods Frameworks";
+			outputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-RickAndMortyTests/Pods-RickAndMortyTests-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-RickAndMortyTests/Pods-RickAndMortyTests-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
 		A57653D1BBE37A0CC8595081 /* [CP] Check Pods Manifest.lock */ = {
